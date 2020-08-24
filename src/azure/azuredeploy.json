@@ -1,0 +1,92 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "appPlanSku": {
+            "type": "string"
+        },
+        "botAppId": {
+            "type": "string"
+        },
+        "botAppPassword": {
+            "type": "string"
+        },
+        "botRegistrationSku": {
+            "type": "string"
+        }
+    },
+    "functions": [],
+    "variables": {
+        "appPlanName": "echo-meetup-plan",
+        "botAppName": "echo-meetup-bot",
+        "botRegistrationName": "echo-meetup-bot-registration"
+    },
+    "resources": [
+        {
+            "name": "[variables('appPlanName')]",
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-02-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "[parameters('appPlanSku')]"
+            },
+            "kind": "linux",
+            "properties": {
+
+            }
+        },
+        {
+            "name": "[variables('botAppName')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('appPlanName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appPlanName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "MicrosoftAppId",
+                            "value": "[parameters('botAppId')]"
+                        },
+                        {
+                            "name": "MicrosoftAppPassword",
+                            "value": "[parameters('botAppPassword')]"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.BotService/botServices",
+            "apiVersion": "2018-07-12",
+            "location": "global",
+            "name": "[variables('botRegistrationName')]",
+            "sku": {
+                "name": "[parameters('botRegistrationSku')]"
+            },
+            "kind": "bot",
+            "properties": {
+                "displayName": "Super echo bot",
+                "iconUrl": "https://docs.botframework.com/static/devportal/client/images/bot-framework-default.png",
+                "endpoint": "[concat('https://', variables('botAppName'), '.azurewebsites.net/api/messages')]",
+                "msaAppId": "[parameters('botAppId')]"
+            }
+        },
+        {
+            "type": "Microsoft.BotService/botServices/channels",
+            "apiVersion": "2018-07-12",
+            "location": "global",
+            "name": "[concat(variables('botRegistrationName'), '/MsTeamsChannel')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.BotService/botServices', variables('botRegistrationName'))]"
+            ],
+            "properties": {
+                "channelName": "MsTeamsChannel"
+            }
+        }
+    ],
+    "outputs": {}
+}
